@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import echolabLogo from '../assets/echolab-logo.png'
 
 function Home() {
   const [isScrolled, setIsScrolled] = useState(false)
+  const [prompt, setPrompt] = useState('')
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -13,7 +15,7 @@ function Home() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  return (
+    return (
     <div className="app">
       {/* Navigation */}
       <nav className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
@@ -52,6 +54,35 @@ function Home() {
           <p className="hero-description">
             Echo Lab answers your questions by searching the web for the most accurate information - then turns it into a coherent video.
           </p>
+          <div style={{display: 'flex', justifyContent: 'center', marginTop: 24, width: '100%'}}>
+            <div style={{width: '100%', maxWidth: 980, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14}}>
+              <div style={{width: '100%', display: 'flex', justifyContent: 'center'}}>
+                <div style={{display: 'flex', width: '100%', maxWidth: 820}}>
+                  <input
+                    type="text"
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        if (prompt.trim()) navigate('/video', { state: { prompt: prompt.trim() } })
+                      }
+                    }}
+                    placeholder="Ask something, e.g. 'Explain quantum entanglement in 20s'"
+                    style={{flex: 1, padding: '16px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 18, height: 56}}
+                  />
+                  <button
+                    onClick={() => { if (prompt.trim()) navigate('/video', { state: { prompt: prompt.trim() } }) }}
+                    className="btn-primary"
+                    aria-label="Generate video"
+                    style={{width: 64, marginLeft: 10, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 20}}
+                  >
+                    →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="hero-cta">
             <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary btn-large">Book a Call</a>
             <a href="https://www.youtube.com/@tryecho" target="_blank" rel="noopener noreferrer" className="btn-secondary btn-large">Watch Demo</a>
