@@ -130,6 +130,12 @@ export default function VideoPage() {
         switch_frame_indices: [96, 192, 288, 384],
         reprompts: null
       }));
+
+      setTimeout(() => {
+          if (!isPlayingRef.current) {
+            startPlayback()
+          }
+        }, 30000)
     }
 
     ws.onmessage = async (event) => {
@@ -145,6 +151,7 @@ export default function VideoPage() {
         }
         
         // Schedule playback to start after 5 seconds
+        // TODO: video socket needs to have a "start" data.type
         setTimeout(() => {
           if (!isPlayingRef.current) {
             startPlayback()
@@ -213,11 +220,11 @@ export default function VideoPage() {
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data)
 
-      if (data.type === 'audio_chunk') {
+      if (data.type === 'scene_audio') {
         // Received an audio chunk
         try {
           // Decode base64 audio data
-          const binaryString = atob(data.data)
+          const binaryString = atob(data.audio_data)
           const bytes = new Uint8Array(binaryString.length)
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
@@ -233,7 +240,7 @@ export default function VideoPage() {
           console.error('Error decoding audio chunk:', error)
         }
         
-      } else if (data.type === 'done') {
+      } else if (data.type === 'scene_complete') {
         console.log('Audio stream complete')
         audioCompleteRef.current = true
       }
@@ -321,6 +328,7 @@ export default function VideoPage() {
   }
 
   const playAudioQueue = () => {
+    console.log("HELELENFLGLILRIJG")
     if (!audioContextRef.current || audioQueueRef.current.length === 0) {
       return
     }
