@@ -174,7 +174,7 @@ export default function VideoPage() {
         reader.onloadend = () => {
           const imageUrl = reader.result as string
           frameQueueRef.current.set(frameIndex, imageUrl)
-          console.log(`Queued frame ${frameIndex}, queue size: ${frameQueueRef.current.size}`)
+          // console.log(`Queued frame ${frameIndex}, queue size: ${frameQueueRef.current.size}`)
         }
         reader.readAsDataURL(blob)
         
@@ -328,25 +328,36 @@ export default function VideoPage() {
   }
 
   const playAudioQueue = () => {
-    console.log("HELELENFLGLILRIJG")
     if (!audioContextRef.current || audioQueueRef.current.length === 0) {
       return
     }
     
-    // For simplicity, concatenate all audio buffers and play
-    // In a real implementation, you might want to play them sequentially
-    const firstBuffer = audioQueueRef.current[0]
-    
-    const source = audioContextRef.current.createBufferSource()
-    source.buffer = firstBuffer
-    source.connect(audioContextRef.current.destination)
-    source.start(0)
-    audioSourceRef.current = source
-    
-    source.onended = () => {
-      console.log('Audio playback ended')
-      audioSourceRef.current = null
+    const playNext = (index: number) => {
+      if (index >= audioQueueRef.current.length) {
+        audioSourceRef.current = null
+        audioQueueRef.current = [] // Clear the queue when done
+        return
+      }
+
+      const buffer = audioQueueRef.current[index]
+      if (!audioContextRef.current) {
+        playNext(index);
+      }
+      else {
+        const source = audioContextRef.current.createBufferSource()
+        source.buffer = buffer
+        source.connect(audioContextRef.current.destination)
+        source.start(0)
+        audioSourceRef.current = source
+
+        source.onended = () => {
+          console.log(`Audio chunk ${index + 1} ended`)
+          playNext(index + 1) // Play the next buffer
+        }
+      }
     }
+
+    playNext(0);
   }
 
   const stopPlayback = () => {
