@@ -88,7 +88,7 @@
   cursor: pointer;
 }
 
-.btn-primary.btn-small {
+.video-btn-primary.btn-small {
   padding: 8px 12px;
   border-radius: 10px;
   background: linear-gradient(90deg,#7c5cff,#4ea1ff);
