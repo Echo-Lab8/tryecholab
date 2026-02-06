@@ -174,7 +174,7 @@ export default function VideoPage() {
         reader.onloadend = () => {
           const imageUrl = reader.result as string
           frameQueueRef.current.set(frameIndex, imageUrl)
-          // console.log(`Queued frame ${frameIndex}, queue size: ${frameQueueRef.current.size}`)
+          console.log(`Queued frame ${frameIndex}, queue size: ${frameQueueRef.current.size}`)
         }
         reader.readAsDataURL(blob)
         
@@ -220,6 +220,12 @@ export default function VideoPage() {
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data)
 
+      const audioContext = audioContextRef.current
+      if (!audioContext) {
+        console.warn("AudioContext missing, dropping audio chunk")
+        return
+      }
+
       if (data.type === 'scene_audio') {
         // Received an audio chunk
         try {
@@ -231,11 +237,10 @@ export default function VideoPage() {
           }
           
           // Decode audio buffer
-          if (audioContextRef.current) {
-            const audioBuffer = await audioContextRef.current.decodeAudioData(bytes.buffer)
-            audioQueueRef.current.push(audioBuffer)
-            console.log(`Queued audio chunk, queue size: ${audioQueueRef.current.length}`)
-          }
+          const audioBuffer = await audioContext.decodeAudioData(bytes.buffer)
+          audioQueueRef.current.push(audioBuffer)
+          console.log(`Queued audio chunk, queue size: ${audioQueueRef.current.length}`)
+
         } catch (error) {
           console.error('Error decoding audio chunk:', error)
         }
