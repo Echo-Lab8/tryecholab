@@ -113,7 +113,7 @@ export default function VideoPage() {
   }
 
   const startVideoWebSocket = (prompt: string) => {
-    const wsUrl = `ws://localhost:8010/ws/generate`
+    const wsUrl = `ws://localhost:8000/ws/video`
     console.log('Connecting to video WebSocket:', wsUrl)
     
     const ws = new WebSocket(wsUrl)
@@ -196,7 +196,7 @@ export default function VideoPage() {
   }
 
   const startAudioWebSocket = (prompt: string) => {
-    const wsUrl = `ws://localhost:8000/ws/2`
+    const wsUrl = `ws://localhost:8000/ws/audio`
     console.log('Connecting to audio WebSocket:', wsUrl)
     
     // Initialize AudioContext if needed
