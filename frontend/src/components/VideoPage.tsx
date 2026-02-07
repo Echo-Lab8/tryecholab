@@ -9,6 +9,8 @@ type HistoryEntry = {
 }
 
 const HISTORY_KEY = 'videoHistory_v1'
+const DEFAULT_NUM_SCENES = 5
+const DEFAULT_FPS = 24
 
 export default function VideoPage() {
   const location = useLocation()
@@ -27,10 +29,8 @@ export default function VideoPage() {
   // WebSocket streaming states
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamStatus, setStreamStatus] = useState<string>('')
-  const [fps, setFps] = useState<number>(24)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const videoWsRef = useRef<WebSocket | null>(null)
-  const audioWsRef = useRef<WebSocket | null>(null)
+  const wsRef = useRef<WebSocket | null>(null)
   
   // Frame and audio queues
   const frameQueueRef = useRef<Map<number, string>>(new Map())
@@ -48,7 +48,7 @@ export default function VideoPage() {
   
   // Generation complete flags
   const videoCompleteRef = useRef<boolean>(false)
-  const audioCompleteRef = useRef<boolean>(false)
+  const pipelineCompleteRef = useRef<boolean>(false)
   const totalFramesRef = useRef<number>(0)
 
   useEffect(() => {
@@ -88,13 +88,9 @@ export default function VideoPage() {
   }, [])
 
   const cleanupWebSockets = () => {
-    if (videoWsRef.current) {
-      videoWsRef.current.close()
-      videoWsRef.current = null
-    }
-    if (audioWsRef.current) {
-      audioWsRef.current.close()
-      audioWsRef.current = null
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
     }
   }
 
@@ -112,151 +108,100 @@ export default function VideoPage() {
     isPlayingRef.current = false
   }
 
-  const startVideoWebSocket = (prompt: string) => {
-    const wsUrl = `ws://localhost:8000/ws/video`
-    console.log('Connecting to video WebSocket:', wsUrl)
-    
+  const startWebSocket = (prompt: string) => {
+    const wsUrl = `ws://localhost:8000/ws/generate`
+    console.log('Connecting to pipeline WebSocket:', wsUrl)
+
+    // Initialize AudioContext if needed
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext()
+    }
+
     const ws = new WebSocket(wsUrl)
-    videoWsRef.current = ws
+    wsRef.current = ws
 
     ws.onopen = () => {
-      console.log('Video WebSocket connected')
-      setStreamStatus('Receiving video frames...')
+      console.log('Pipeline WebSocket connected')
+      setStreamStatus('Connected, generating...')
 
-      // Send request to WebSocket server
       ws.send(JSON.stringify({
-        prompts: [prompt, prompt, prompt, prompt, prompt],
-        blocks_per_chunk: 5,
-        switch_frame_indices: [96, 192, 288, 384],
-        reprompts: null
-      }));
+        question: prompt,
+        fps: DEFAULT_FPS,
+        num_scenes: DEFAULT_NUM_SCENES,
+      }))
 
+      streamStartTimeRef.current = performance.now()
+
+      // Schedule playback after buffer delay
       setTimeout(() => {
-          if (!isPlayingRef.current) {
-            startPlayback()
-          }
-        }, 30000)
+        if (!isPlayingRef.current) {
+          startPlayback()
+        }
+      }, 30000)
     }
 
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data)
 
-      if (data.type === 'start') {
-        // Received FPS and metadata
-        setFps(data.fps)
-        
-        // Set the stream start time when we receive the start message
-        if (!streamStartTimeRef.current) {
-          streamStartTimeRef.current = performance.now()
-        }
-        
-        // Schedule playback to start after 5 seconds
-        // TODO: video socket needs to have a "start" data.type
-        setTimeout(() => {
-          if (!isPlayingRef.current) {
-            startPlayback()
-          }
-        }, 5000)
-        
-      } else if (data.type === 'frame') {
-        // Received a frame
+      if (data.type === 'frame') {
         const frameIndex = data.frame_index
-        
-        // Decode base64 to image URL
+
         const binaryString = atob(data.data)
         const bytes = new Uint8Array(binaryString.length)
         for (let i = 0; i < binaryString.length; i++) {
           bytes[i] = binaryString.charCodeAt(i)
         }
-        
+
         const blob = new Blob([bytes], { type: 'image/jpeg' })
         const reader = new FileReader()
         reader.onloadend = () => {
           const imageUrl = reader.result as string
           frameQueueRef.current.set(frameIndex, imageUrl)
-          console.log(`Queued frame ${frameIndex}, queue size: ${frameQueueRef.current.size}`)
+          // console.log(`Queued frame ${frameIndex}, queue size: ${frameQueueRef.current.size}`)
         }
         reader.readAsDataURL(blob)
-        
-      } else if (data.type === 'done') {
-        videoCompleteRef.current = true
-        totalFramesRef.current = data.total_frames
-        console.log('Video stream complete, total frames:', data.total_frames)
-      }
-    }
 
-    ws.onerror = (error) => {
-      console.error('Video WebSocket error:', error)
-      setStreamStatus('Video stream error')
-    }
+      } else if (data.type === 'scene_audio') {
+        const audioContext = audioContextRef.current
+        if (!audioContext) {
+          console.warn("AudioContext missing, dropping audio chunk")
+          return
+        }
 
-    ws.onclose = () => {
-      console.log('Video WebSocket closed')
-    }
-  }
-
-  const startAudioWebSocket = (prompt: string) => {
-    const wsUrl = `ws://localhost:8000/ws/audio`
-    console.log('Connecting to audio WebSocket:', wsUrl)
-    
-    // Initialize AudioContext if needed
-    if (!audioContextRef.current) {
-      audioContextRef.current = new AudioContext()
-    }
-    
-    const ws = new WebSocket(wsUrl)
-    audioWsRef.current = ws
-
-    ws.onopen = () => {
-      console.log('Audio WebSocket connected')
-
-      // Send request to WebSocket server
-      ws.send(JSON.stringify({
-        question: prompt,
-        num_scenes: 5,
-      }));
-    }
-
-    ws.onmessage = async (event) => {
-      const data = JSON.parse(event.data)
-
-      const audioContext = audioContextRef.current
-      if (!audioContext) {
-        console.warn("AudioContext missing, dropping audio chunk")
-        return
-      }
-
-      if (data.type === 'scene_audio') {
-        // Received an audio chunk
         try {
-          // Decode base64 audio data
           const binaryString = atob(data.audio_data)
           const bytes = new Uint8Array(binaryString.length)
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i)
           }
-          
-          // Decode audio buffer
+
           const audioBuffer = await audioContext.decodeAudioData(bytes.buffer)
           audioQueueRef.current.push(audioBuffer)
           console.log(`Queued audio chunk, queue size: ${audioQueueRef.current.length}`)
-
         } catch (error) {
           console.error('Error decoding audio chunk:', error)
         }
-        
-      } else if (data.type === 'scene_complete') {
-        console.log('Audio stream complete')
-        audioCompleteRef.current = true
+
+      } else if (data.type === 'video_complete') {
+        videoCompleteRef.current = true
+        totalFramesRef.current = data.total_frames
+        console.log('Video generation complete, total frames:', data.total_frames)
+
+      } else if (data.type === 'pipeline_complete') {
+        pipelineCompleteRef.current = true
+        console.log('Pipeline complete')
+        setStreamStatus('Generation complete!')
+        // TODO: compile the video
       }
     }
 
     ws.onerror = (error) => {
-      console.error('Audio WebSocket error:', error)
+      console.error('Pipeline WebSocket error:', error)
+      setStreamStatus('Connection error')
     }
 
     ws.onclose = () => {
-      console.log('Audio WebSocket closed')
+      console.log('Pipeline WebSocket closed')
     }
   }
 
@@ -289,7 +234,7 @@ export default function VideoPage() {
     
     // Start video playback
     playbackStartTimeRef.current = performance.now()
-    const frameInterval = 1000 / fps
+    const frameInterval = 1000 / DEFAULT_FPS
     let currentFrameIndex = 0
     
     const playFrame = () => {
@@ -380,7 +325,7 @@ export default function VideoPage() {
 
       // Reset state
       videoCompleteRef.current = false
-      audioCompleteRef.current = false
+      pipelineCompleteRef.current = false
       totalFramesRef.current = 0
       frameQueueRef.current.clear()
       audioQueueRef.current = []
@@ -414,11 +359,10 @@ export default function VideoPage() {
         setVideoUrl(null)
       }
 
-      // Start both websockets
-      startVideoWebSocket(p)
-      startAudioWebSocket(p)
-      
-      setStreamStatus('Connecting to streams...')
+      // Start pipeline websocket
+      startWebSocket(p)
+
+      setStreamStatus('Connecting...')
 
       // add to in-memory cache for quick replay
       if (addToHistory) {
