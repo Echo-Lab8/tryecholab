@@ -11,7 +11,7 @@ type HistoryEntry = {
 const HISTORY_KEY = 'videoHistory_v1'
 const DEFAULT_NUM_SCENES = 5
 const DEFAULT_FPS = 24
-const DEFAULT_WAIT_MILLISECOND = 15000
+const DEFAULT_WAIT_MILLISECOND = 30000
 
 export default function VideoPage() {
   const location = useLocation()
@@ -284,11 +284,16 @@ export default function VideoPage() {
         const img = new Image()
         img.onload = () => {
           // Set canvas size on first frame
-          if (currentFrameIndex === 0) {
+          if (canvas.width !== img.width || canvas.height !== img.height) {
             canvas.width = img.width
             canvas.height = img.height
           }
-          ctx.drawImage(img, 0, 0)
+          
+          // Clear canvas before drawing
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+          
+          // Draw the full image
+          ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height)
         }
         img.src = imageUrl
         
