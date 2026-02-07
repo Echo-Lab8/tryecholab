@@ -65,14 +65,14 @@ function Home() {
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault()
-                        if (prompt.trim()) navigate('/video', { state: { prompt: prompt.trim() } })
+                        if (prompt.trim()) navigate('/video', { state: { prompt: prompt.trim(), autoGenerate: true } })
                       }
                     }}
                     placeholder="Ask something, e.g. 'Explain quantum entanglement in 20s'"
                     style={{flex: 1, padding: '16px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.03)', color: '#fff', fontSize: 18, height: 56}}
                   />
                   <button
-                    onClick={() => { if (prompt.trim()) navigate('/video', { state: { prompt: prompt.trim() } }) }}
+                    onClick={() => { if (prompt.trim()) navigate('/video', { state: { prompt: prompt.trim(), autoGenerate: true } }) }}
                     className="btn-primary"
                     aria-label="Generate video"
                     style={{width: 64, marginLeft: 10, borderRadius: 12, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 20}}

@@ -16,6 +16,7 @@ const DEFAULT_WAIT_MILLISECOND = 15000
 export default function VideoPage() {
   const location = useLocation()
   const initialPrompt = (location.state as any)?.prompt ?? ''
+  const autoGenerate = (location.state as any)?.autoGenerate ?? false
 
   const [prompt, setPrompt] = useState(initialPrompt)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -86,6 +87,9 @@ export default function VideoPage() {
 
     if (initialPrompt) {
       setPrompt(initialPrompt)
+      if (autoGenerate) {
+        generate(initialPrompt)
+      }
     }
 
     return () => {
