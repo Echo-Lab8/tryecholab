@@ -11,6 +11,7 @@ type HistoryEntry = {
 const HISTORY_KEY = 'videoHistory_v1'
 const DEFAULT_NUM_SCENES = 5
 const DEFAULT_FPS = 24
+const DEFAULT_WAIT_MILLISECOND = 15000
 
 export default function VideoPage() {
   const location = useLocation()
@@ -29,6 +30,9 @@ export default function VideoPage() {
   // WebSocket streaming states
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamStatus, setStreamStatus] = useState<string>('')
+  const [isBuffering, setIsBuffering] = useState(false)
+  const [bufferElapsed, setBufferElapsed] = useState(0)
+  const bufferTimerRef = useRef<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   
@@ -60,6 +64,10 @@ export default function VideoPage() {
       if (timerRef.current) {
         try { window.clearInterval(timerRef.current) } catch (_) {}
         timerRef.current = null
+      }
+      if (bufferTimerRef.current) {
+        try { window.clearInterval(bufferTimerRef.current) } catch (_) {}
+        bufferTimerRef.current = null
       }
       cleanupWebSockets()
       cleanupPlayback()
@@ -132,12 +140,30 @@ export default function VideoPage() {
 
       streamStartTimeRef.current = performance.now()
 
+      // Start buffer countdown
+      setIsBuffering(true)
+      setBufferElapsed(0)
+      const bufferStart = performance.now()
+      if (bufferTimerRef.current) {
+        window.clearInterval(bufferTimerRef.current)
+      }
+      bufferTimerRef.current = window.setInterval(() => {
+        const ms = Math.round(performance.now() - bufferStart)
+        setBufferElapsed(ms)
+        if (ms >= DEFAULT_WAIT_MILLISECOND) {
+          if (bufferTimerRef.current) {
+            window.clearInterval(bufferTimerRef.current)
+            bufferTimerRef.current = null
+          }
+        }
+      }, 100)
+
       // Schedule playback after buffer delay
       setTimeout(() => {
         if (!isPlayingRef.current) {
           startPlayback()
         }
-      }, 30000)
+      }, DEFAULT_WAIT_MILLISECOND)
     }
 
     ws.onmessage = async (event) => {
@@ -210,8 +236,15 @@ export default function VideoPage() {
       console.log('Playback already started')
       return
     }
-    
-    console.log('Starting playback after 5 second buffer...')
+
+    // Clear buffer countdown
+    setIsBuffering(false)
+    if (bufferTimerRef.current) {
+      window.clearInterval(bufferTimerRef.current)
+      bufferTimerRef.current = null
+    }
+
+    console.log('Starting playback...')
     setStreamStatus('Playing (still receiving data)...')
     isPlayingRef.current = true
     
@@ -485,44 +518,39 @@ export default function VideoPage() {
       <main className="video-main">
         <div className="video-container">
           {isStreaming ? (
-            <div style={{ position: 'relative' }}>
-              <canvas 
-                ref={canvasRef} 
+            <div className="canvas-wrapper">
+              <canvas
+                ref={canvasRef}
                 className="video-player"
-                style={{ width: '100%', height: 'auto', background: '#000' }}
               />
-              {streamStatus && (
-                <div style={{
-                  position: 'absolute',
-                  top: '10px',
-                  left: '10px',
-                  background: 'rgba(0,0,0,0.8)',
-                  color: 'white',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}>
+              {isBuffering && (
+                <div className="buffer-overlay">
+                  <div className="buffer-content">
+                    <div className="buffer-spinner" />
+                    <div className="buffer-text">Buffering...</div>
+                    <div className="buffer-time">
+                      {(bufferElapsed / 1000).toFixed(1)}s / {(DEFAULT_WAIT_MILLISECOND / 1000).toFixed(0)}s
+                    </div>
+                    <div className="buffer-bar-track">
+                      <div
+                        className="buffer-bar-fill"
+                        style={{ width: `${Math.min(100, (bufferElapsed / DEFAULT_WAIT_MILLISECOND) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              {streamStatus && !isBuffering && (
+                <div className="stream-status-badge">
                   {streamStatus}
                 </div>
               )}
               {isPlayingRef.current && (
                 <button
                   onClick={stopPlayback}
-                  style={{
-                    position: 'absolute',
-                    bottom: '20px',
-                    right: '20px',
-                    padding: '10px 20px',
-                    background: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}
+                  className="stop-button"
                 >
-                  ⏹ Stop
+                  Stop
                 </button>
               )}
             </div>
