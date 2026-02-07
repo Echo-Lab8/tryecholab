@@ -86,7 +86,6 @@ export default function VideoPage() {
 
     if (initialPrompt) {
       setPrompt(initialPrompt)
-      generate(initialPrompt)
     }
 
     return () => {
