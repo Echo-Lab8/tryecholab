@@ -48,11 +48,11 @@ function Home() {
             <span>✨ AI-Powered Video & Audio Generation</span>
           </div>
           <h1 className="hero-title">
-            Get Your Questions Answered With
-            <span className="gradient-text"> Video</span>
+            Create Any Video By Chatting With
+            <span className="gradient-text"> Echo</span>
           </h1>
           <p className="hero-description">
-            Echo Lab answers your questions by searching the web for the most accurate information - then turns it into a coherent video.
+            Echo Lab lets anyone of all backgrounds generate high-quality videos faster than ever before, powered by the best video tools
           </p>
           <div style={{display: 'flex', justifyContent: 'center', marginTop: 24, width: '100%'}}>
             <div style={{width: '100%', maxWidth: 980, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14}}>
@@ -110,12 +110,12 @@ function Home() {
           <div className="about-content">
             <div className="about-text">
               <h2 className="section-title">Our Mission</h2>
-              <p className="about-description bolded-description"><strong>Stop wasting time reading answers - watch an engaging video instead</strong></p>
+              <p className="about-description bolded-description"><strong>Everyone can be a filmmaker</strong></p>
               <p className="about-description">
-                Every day, users spend hours understanding information provided from their favorite search engine (e.g. Google) or language model (e.g. ChatGPT).
-              </p>
+                The best AI video models should be in the hands of everyone, not just those with technical expertise or big budgets. 
+              </p> 
               <p className="about-description">
-                At Echo Lab, our mission is to transform how people consume information by converting answers into engaging video content that directly answers their question.
+                At Echo Lab, our mission is to democratize access to powerful video generation tools, enabling anyone to create high-quality videos with just a few words.
               </p>
               {/* <div className="about-features">
                 <div className="about-feature">
@@ -142,7 +142,7 @@ function Home() {
           <div className="section-header">
             <h2 className="section-title">Powerful Features</h2>
             <p className="section-description">
-              Answers your questions by integrating the best video tools
+              Creates your videos by integrating the best video tools
             </p>
           </div>
           <div className="features-grid">
@@ -196,7 +196,7 @@ function Home() {
       <section className="cta">
         <div className="container">
           <div className="cta-content">
-            <h2 className="cta-title">Ready to Fast-track Your Learning?</h2>
+            <h2 className="cta-title">Ready to Let Your Imagination Run Wild?</h2>
             <p className="cta-description">
               {/* Join thousands of creators using EchoLab to streamline their workflow */}
             </p>
@@ -215,7 +215,7 @@ function Home() {
                 <span className="logo-text">EchoLab</span>
               </div>
               <p className="footer-description">
-                Understand the world faster with AI-powered video content 
+                Create videos in seconds by chatting with AI
               </p>
             </div>
             <div className="footer-section">
