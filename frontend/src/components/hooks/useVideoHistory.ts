@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from 'react'
 export type HistoryEntry = {
   id: string
   prompt: string
-  createdAt: string // ISO
+  createdAt: string // ISO date
 }
 
 const HISTORY_KEY = 'videoHistory_v1'
