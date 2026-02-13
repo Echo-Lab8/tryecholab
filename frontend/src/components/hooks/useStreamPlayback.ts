@@ -18,12 +18,12 @@ export function useStreamPlayback() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
 
-  // Frame and audio queues
-  const frameQueueRef = useRef<Map<number, string>>(new Map())
-  const audioQueueRef = useRef<AudioBuffer[]>([])
+  // Frame queue: frame_index → { url, scene_number }
+  const frameQueueRef = useRef<Map<number, { url: string; scene_number: number }>>(new Map())
+  // Audio queue: scene_number → AudioBuffer
+  const audioQueueRef = useRef<Map<number, AudioBuffer>>(new Map())
   const audioContextRef = useRef<AudioContext | null>(null)
-  const nextFrameIndexRef = useRef<number>(0)
-  const nextAudioIndexRef = useRef<number>(0)
+  const currentPlayingSceneRef = useRef<number>(0)
 
   // Playback control
   const playbackStartTimeRef = useRef<number | null>(null)
@@ -124,6 +124,7 @@ export function useStreamPlayback() {
 
   const handleFrame = (data: any) => {
     const frameIndex = data.frame_index
+    const sceneNumber = data.scene_number
 
     const binaryString = atob(data.data)
     const bytes = new Uint8Array(binaryString.length)
@@ -134,7 +135,10 @@ export function useStreamPlayback() {
     const blob = new Blob([bytes], { type: 'image/jpeg' })
     const reader = new FileReader()
     reader.onloadend = () => {
-      frameQueueRef.current.set(frameIndex, reader.result as string)
+      frameQueueRef.current.set(frameIndex, {
+        url: reader.result as string,
+        scene_number: sceneNumber,
+      })
     }
     reader.readAsDataURL(blob)
   }
@@ -147,6 +151,7 @@ export function useStreamPlayback() {
     }
 
     try {
+      const sceneNumber = data.scene_number
       const binaryString = atob(data.audio_data)
       const bytes = new Uint8Array(binaryString.length)
       for (let i = 0; i < binaryString.length; i++) {
@@ -154,8 +159,8 @@ export function useStreamPlayback() {
       }
 
       const audioBuffer = await audioContext.decodeAudioData(bytes.buffer)
-      audioQueueRef.current.push(audioBuffer)
-      console.log(`Queued audio chunk, queue size: ${audioQueueRef.current.length}`)
+      audioQueueRef.current.set(sceneNumber, audioBuffer)
+      console.log(`Queued audio for scene ${sceneNumber}`)
     } catch (error) {
       console.error('Error decoding audio chunk:', error)
     }
@@ -187,16 +192,12 @@ export function useStreamPlayback() {
     console.log('Starting playback...')
     setStreamStatus('Playing (still receiving data)...')
     isPlayingRef.current = true
+    currentPlayingSceneRef.current = 0
 
     const canvas = canvasRef.current
     if (!canvas) { console.error('Canvas not found'); return }
     const ctx = canvas.getContext('2d')
     if (!ctx) { console.error('Cannot get canvas context'); return }
-
-    // Audio
-    if (audioQueueRef.current.length > 0 && audioContextRef.current) {
-      playAudioQueue()
-    }
 
     // Video frames
     playbackStartTimeRef.current = performance.now()
@@ -206,8 +207,14 @@ export function useStreamPlayback() {
     const playFrame = () => {
       if (!isPlayingRef.current) return
 
-      const imageUrl = frameQueueRef.current.get(currentFrameIndex)
-      if (imageUrl) {
+      const frame = frameQueueRef.current.get(currentFrameIndex)
+      if (frame) {
+        // If scene changed, play that scene's audio
+        if (frame.scene_number !== currentPlayingSceneRef.current) {
+          currentPlayingSceneRef.current = frame.scene_number
+          playSceneAudio(frame.scene_number)
+        }
+
         const img = new Image()
         img.onload = () => {
           if (canvas.width !== img.width || canvas.height !== img.height) {
@@ -217,7 +224,7 @@ export function useStreamPlayback() {
           ctx.clearRect(0, 0, canvas.width, canvas.height)
           ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, canvas.width, canvas.height)
         }
-        img.src = imageUrl
+        img.src = frame.url
         currentFrameIndex++
       } else {
         console.log(`Waiting for frame ${currentFrameIndex}...`)
@@ -234,33 +241,27 @@ export function useStreamPlayback() {
     playFrame()
   }
 
-  const playAudioQueue = () => {
-    if (!audioContextRef.current || audioQueueRef.current.length === 0) return
+  const playSceneAudio = (sceneNumber: number) => {
+    if (!audioContextRef.current) return
 
-    const playNext = (index: number) => {
-      if (index >= audioQueueRef.current.length) {
-        audioSourceRef.current = null
-        audioQueueRef.current = []
-        return
-      }
-
-      const buffer = audioQueueRef.current[index]
-      if (!audioContextRef.current) {
-        playNext(index)
-      } else {
-        const source = audioContextRef.current.createBufferSource()
-        source.buffer = buffer
-        source.connect(audioContextRef.current.destination)
-        source.start(0)
-        audioSourceRef.current = source
-        source.onended = () => {
-          console.log(`Audio chunk ${index + 1} ended`)
-          playNext(index + 1)
-        }
-      }
+    // Stop current audio if playing
+    if (audioSourceRef.current) {
+      try { audioSourceRef.current.stop() } catch (_) {}
+      audioSourceRef.current = null
     }
 
-    playNext(0)
+    const buffer = audioQueueRef.current.get(sceneNumber)
+    if (!buffer) {
+      console.log(`No audio yet for scene ${sceneNumber}`)
+      return
+    }
+
+    const source = audioContextRef.current.createBufferSource()
+    source.buffer = buffer
+    source.connect(audioContextRef.current.destination)
+    source.start(0)
+    audioSourceRef.current = source
+    console.log(`Playing audio for scene ${sceneNumber}`)
   }
 
   const stopPlayback = () => {
@@ -275,9 +276,8 @@ export function useStreamPlayback() {
     pipelineCompleteRef.current = false
     totalFramesRef.current = 0
     frameQueueRef.current.clear()
-    audioQueueRef.current = []
-    nextFrameIndexRef.current = 0
-    nextAudioIndexRef.current = 0
+    audioQueueRef.current.clear()
+    currentPlayingSceneRef.current = 0
     streamStartTimeRef.current = null
     cleanupWebSocket()
     cleanupPlayback()
