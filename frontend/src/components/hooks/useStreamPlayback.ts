@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const DEFAULT_NUM_SCENES = 5
-const DEFAULT_FPS = 24
+const DEFAULT_FPS = 16
 
 interface SceneInfo {
   scene_number: number
