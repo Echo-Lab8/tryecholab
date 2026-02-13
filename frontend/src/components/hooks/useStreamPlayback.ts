@@ -2,17 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 
 const DEFAULT_NUM_SCENES = 5
 const DEFAULT_FPS = 24
-const DEFAULT_WAIT_MILLISECOND = 10000
+
+interface SceneInfo {
+  scene_number: number
+  title: string
+  description: string
+}
 
 export function useStreamPlayback() {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamStatus, setStreamStatus] = useState('')
-  const [isBuffering, setIsBuffering] = useState(false)
-  const [bufferElapsed, setBufferElapsed] = useState(0)
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [currentScene, setCurrentScene] = useState<SceneInfo | null>(null)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
-  const bufferTimerRef = useRef<number | null>(null)
 
   // Frame and audio queues
   const frameQueueRef = useRef<Map<number, string>>(new Map())
@@ -36,10 +40,6 @@ export function useStreamPlayback() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (bufferTimerRef.current) {
-        try { window.clearInterval(bufferTimerRef.current) } catch (_) {}
-        bufferTimerRef.current = null
-      }
       cleanupWebSocket()
       cleanupPlayback()
     }
@@ -67,7 +67,9 @@ export function useStreamPlayback() {
 
     ws.onopen = () => {
       console.log('Pipeline WebSocket connected')
-      setStreamStatus('Connected, generating...')
+      setStreamStatus('Generating Stream')
+      setIsGenerating(true)
+      setCurrentScene(null)
 
       ws.send(JSON.stringify({
         question: prompt,
@@ -76,34 +78,24 @@ export function useStreamPlayback() {
       }))
 
       streamStartTimeRef.current = performance.now()
-
-      // Buffer countdown
-      setIsBuffering(true)
-      setBufferElapsed(0)
-      const bufferStart = performance.now()
-      if (bufferTimerRef.current) window.clearInterval(bufferTimerRef.current)
-
-      bufferTimerRef.current = window.setInterval(() => {
-        const ms = Math.round(performance.now() - bufferStart)
-        setBufferElapsed(ms)
-        if (ms >= DEFAULT_WAIT_MILLISECOND) {
-          if (bufferTimerRef.current) {
-            window.clearInterval(bufferTimerRef.current)
-            bufferTimerRef.current = null
-          }
-        }
-      }, 100)
-
-      // Schedule playback after buffer delay
-      setTimeout(() => {
-        if (!isPlayingRef.current) startPlayback()
-      }, DEFAULT_WAIT_MILLISECOND)
     }
 
     ws.onmessage = async (event) => {
       const data = JSON.parse(event.data)
 
-      if (data.type === 'frame') {
+      if (data.type === 'scene_info') {
+        setCurrentScene({
+          scene_number: data.scene_number,
+          title: data.title,
+          description: data.description,
+        })
+        console.log(`Scene ${data.scene_number}: ${data.title}`)
+      } else if (data.type === 'scene_complete') {
+        console.log('Scene complete, starting playback')
+        setIsGenerating(false)
+        setCurrentScene(null)
+        if (!isPlayingRef.current) startPlayback()
+      } else if (data.type === 'frame') {
         handleFrame(data)
       } else if (data.type === 'scene_audio') {
         await handleAudio(data)
@@ -189,11 +181,8 @@ export function useStreamPlayback() {
       return
     }
 
-    setIsBuffering(false)
-    if (bufferTimerRef.current) {
-      window.clearInterval(bufferTimerRef.current)
-      bufferTimerRef.current = null
-    }
+    setIsGenerating(false)
+    setCurrentScene(null)
 
     console.log('Starting playback...')
     setStreamStatus('Playing (still receiving data)...')
@@ -307,8 +296,8 @@ export function useStreamPlayback() {
     setIsStreaming,
     streamStatus,
     setStreamStatus,
-    isBuffering,
-    bufferElapsed,
+    isGenerating,
+    currentScene,
     canvasRef,
     isPlayingRef,
 
@@ -317,8 +306,5 @@ export function useStreamPlayback() {
     stopPlayback,
     resetState,
     fullCleanup,
-
-    // Constants (exposed for the buffer overlay UI)
-    DEFAULT_WAIT_MILLISECOND,
   }
 }

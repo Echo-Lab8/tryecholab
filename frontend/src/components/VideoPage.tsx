@@ -31,15 +31,14 @@ export default function VideoPage() {
     setIsStreaming,
     streamStatus,
     setStreamStatus,
-    isBuffering,
-    bufferElapsed,
+    isGenerating,
+    currentScene,
     canvasRef,
     isPlayingRef,
     startStream,
     stopPlayback,
     resetState,
     fullCleanup,
-    DEFAULT_WAIT_MILLISECOND,
   } = useStreamPlayback()
 
   // ── Auto-generate on mount from Home page ──────────────────
@@ -178,25 +177,23 @@ export default function VideoPage() {
             <div className="canvas-wrapper">
               <canvas ref={canvasRef} className="video-player" />
 
-              {isBuffering && (
+              {isGenerating && (
                 <div className="buffer-overlay">
                   <div className="buffer-content">
                     <div className="buffer-spinner" />
-                    <div className="buffer-text">Buffering...</div>
-                    <div className="buffer-time">
-                      {(bufferElapsed / 1000).toFixed(1)}s / {(DEFAULT_WAIT_MILLISECOND / 1000).toFixed(0)}s
-                    </div>
-                    <div className="buffer-bar-track">
-                      <div
-                        className="buffer-bar-fill"
-                        style={{ width: `${Math.min(100, (bufferElapsed / DEFAULT_WAIT_MILLISECOND) * 100)}%` }}
-                      />
-                    </div>
+                    <div className="buffer-text">Generating Stream</div>
+                    {currentScene && (
+                      <div className="scene-info">
+                        <div className="scene-number">Scene {currentScene.scene_number}</div>
+                        <div className="scene-title">{currentScene.title}</div>
+                        <div className="scene-description">{currentScene.description}</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
-              {streamStatus && !isBuffering && (
+              {streamStatus && !isGenerating && (
                 <div className="stream-status-badge">{streamStatus}</div>
               )}
 
