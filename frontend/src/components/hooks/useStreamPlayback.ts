@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const DEFAULT_NUM_SCENES = 5
-const DEFAULT_FPS = 15 // 16 fps for video-only; 15 fps when generating audio (slower)
+const DEFAULT_FPS = 16 // 16 fps for video-only; 15 fps when generating audio (slower)
 
 interface SceneInfo {
   scene_number: number
