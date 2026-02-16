@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 const DEFAULT_NUM_SCENES = 5
-const DEFAULT_FPS = 16
+const DEFAULT_FPS = 15 // 16 fps for video-only; 15 fps when generating audio (slower)
 
 interface SceneInfo {
   scene_number: number
@@ -9,11 +9,12 @@ interface SceneInfo {
   description: string
 }
 
-export function useStreamPlayback() {
+export function useStreamPlayback(onRecordingComplete?: (url: string) => void) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamStatus, setStreamStatus] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [currentScene, setCurrentScene] = useState<SceneInfo | null>(null)
+  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null)
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
@@ -36,6 +37,17 @@ export function useStreamPlayback() {
   const videoCompleteRef = useRef<boolean>(false)
   const pipelineCompleteRef = useRef<boolean>(false)
   const totalFramesRef = useRef<number>(0)
+
+  // Recording refs
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const streamDestRef = useRef<MediaStreamAudioDestinationNode | null>(null)
+  const onRecordingCompleteRef = useRef(onRecordingComplete)
+
+  // Keep callback ref in sync
+  useEffect(() => {
+    onRecordingCompleteRef.current = onRecordingComplete
+  }, [onRecordingComplete])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -166,6 +178,58 @@ export function useStreamPlayback() {
     }
   }
 
+  // ── Recording ───────────────────────────────────────────────
+
+  const startRecording = (canvas: HTMLCanvasElement) => {
+    const audioContext = audioContextRef.current
+    if (!audioContext) return
+
+    // Create audio destination for recording
+    streamDestRef.current = audioContext.createMediaStreamDestination()
+
+    // Capture canvas video stream
+    const canvasStream = canvas.captureStream(DEFAULT_FPS)
+
+    // Combine video + audio tracks
+    const combinedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...streamDestRef.current.stream.getAudioTracks(),
+    ])
+
+    recordedChunksRef.current = []
+
+    const recorder = new MediaRecorder(combinedStream, {
+      mimeType: 'video/webm;codecs=vp8,opus',
+    })
+
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        recordedChunksRef.current.push(e.data)
+      }
+    }
+
+    recorder.onstop = () => {
+      const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' })
+      const url = URL.createObjectURL(blob)
+      setRecordedVideoUrl(url)
+      onRecordingCompleteRef.current?.(url)
+      console.log('Recording complete, blob size:', blob.size)
+    }
+
+    recorder.start()
+    mediaRecorderRef.current = recorder
+    console.log('MediaRecorder started')
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop()
+      console.log('MediaRecorder stopped')
+    }
+    mediaRecorderRef.current = null
+    streamDestRef.current = null
+  }
+
   // ── Playback ───────────────────────────────────────────────
 
   const cleanupPlayback = () => {
@@ -198,6 +262,9 @@ export function useStreamPlayback() {
     if (!canvas) { console.error('Canvas not found'); return }
     const ctx = canvas.getContext('2d')
     if (!ctx) { console.error('Cannot get canvas context'); return }
+
+    // Start recording
+    startRecording(canvas)
 
     // Video frames
     playbackStartTimeRef.current = performance.now()
@@ -258,7 +325,15 @@ export function useStreamPlayback() {
 
     const source = audioContextRef.current.createBufferSource()
     source.buffer = buffer
+
+    // Connect to speakers
     source.connect(audioContextRef.current.destination)
+
+    // Connect to recording stream if active
+    if (streamDestRef.current) {
+      source.connect(streamDestRef.current)
+    }
+
     source.start(0)
     audioSourceRef.current = source
     console.log(`Playing audio for scene ${sceneNumber}`)
@@ -267,6 +342,7 @@ export function useStreamPlayback() {
   const stopPlayback = () => {
     isPlayingRef.current = false
     cleanupPlayback()
+    stopRecording()
   }
 
   // ── Public reset (used when starting a new generation) ─────
@@ -279,13 +355,16 @@ export function useStreamPlayback() {
     audioQueueRef.current.clear()
     currentPlayingSceneRef.current = 0
     streamStartTimeRef.current = null
+    setRecordedVideoUrl(null)
     cleanupWebSocket()
     cleanupPlayback()
+    stopRecording()
   }
 
   const fullCleanup = () => {
     cleanupWebSocket()
     cleanupPlayback()
+    stopRecording()
     setIsStreaming(false)
     setStreamStatus('')
   }
@@ -300,6 +379,7 @@ export function useStreamPlayback() {
     currentScene,
     canvasRef,
     isPlayingRef,
+    recordedVideoUrl,
 
     // Actions
     startStream,

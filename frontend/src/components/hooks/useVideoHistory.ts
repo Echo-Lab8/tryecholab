@@ -72,6 +72,12 @@ export function useVideoHistory() {
 
   const getCachedUrl = (id: string): string | undefined => videoCache[id]
 
+  const cacheVideo = (id: string, url: string) => {
+    const copy = { ...cacheRef.current, [id]: url }
+    setVideoCache(copy)
+    cacheRef.current = copy
+  }
+
   /** Revoke a video URL if it's not in the cache */
   const safeRevoke = (url: string | null) => {
     if (!url) return
@@ -90,6 +96,7 @@ export function useVideoHistory() {
     addEntry,
     deleteEntry,
     getCachedUrl,
+    cacheVideo,
     safeRevoke,
   }
 }

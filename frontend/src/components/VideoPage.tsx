@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useVideoHistory } from './hooks/useVideoHistory'
 import type { HistoryEntry } from './hooks/useVideoHistory'
@@ -23,8 +23,20 @@ export default function VideoPage() {
     addEntry,
     deleteEntry,
     getCachedUrl,
+    cacheVideo,
     safeRevoke,
   } = useVideoHistory()
+
+  const selectedIdRef = useRef(selectedId)
+  selectedIdRef.current = selectedId
+
+  const handleRecordingComplete = useCallback((url: string) => {
+    setVideoUrl(url)
+    setIsStreaming(false)
+    if (selectedIdRef.current) {
+      cacheVideo(selectedIdRef.current, url)
+    }
+  }, [cacheVideo])
 
   const {
     isStreaming,
@@ -39,7 +51,7 @@ export default function VideoPage() {
     stopPlayback,
     resetState,
     fullCleanup,
-  } = useStreamPlayback()
+  } = useStreamPlayback(handleRecordingComplete)
 
   // ── Auto-generate on mount from Home page ──────────────────
 
@@ -105,6 +117,7 @@ export default function VideoPage() {
     setPrompt(entry.prompt)
     const cached = getCachedUrl(entry.id)
     if (cached) {
+      fullCleanup()
       safeRevoke(videoUrl)
       setVideoUrl(cached)
       setSelectedId(entry.id)
