@@ -31,7 +31,7 @@ function Home() {
             <a href="#features">Features</a>
             <Link to="/blog">Blog</Link>
             {/* <a href="#contact">Contact</a> */}
-            <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
+            <a href="https://calendar.app.google/TBoLz96A9MSa8fhx6" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
           </div>
         </div>
       </nav>
@@ -84,7 +84,7 @@ function Home() {
             </div>
           </div>
           <div className="hero-cta">
-            <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary btn-large">Book a Call</a>
+            <a href="https://calendar.app.google/TBoLz96A9MSa8fhx6" target="_blank" rel="noopener noreferrer" className="btn-primary btn-large">Book a Call</a>
             <a href="https://www.youtube.com/@tryecho" target="_blank" rel="noopener noreferrer" className="btn-secondary btn-large">Watch Demo</a>
           </div>
           {/* <div className="hero-stats">
@@ -200,7 +200,7 @@ function Home() {
             <p className="cta-description">
               {/* Join thousands of creators using EchoLab to streamline their workflow */}
             </p>
-            <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary btn-large">Book a Call</a>
+            <a href="https://calendar.app.google/TBoLz96A9MSa8fhx6" target="_blank" rel="noopener noreferrer" className="btn-primary btn-large">Book a Call</a>
           </div>
         </div>
       </section>
