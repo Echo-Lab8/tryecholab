@@ -186,23 +186,6 @@
   font-size: 18px;
 }
 
-.btn-link {
-  background: none;
-  border: none;
-  color: rgba(255,255,255,0.7);
-  cursor: pointer;
-}
-
-.video-btn-primary.btn-small {
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: linear-gradient(90deg,#7c5cff,#4ea1ff);
-  border: none;
-  color: #fff;
-  cursor: pointer;
-  font-size: 14px;
-}
-
 .history-left {
   display: flex;
   align-items: center;
