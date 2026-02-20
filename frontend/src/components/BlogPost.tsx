@@ -46,7 +46,7 @@ function BlogPostComponent() {
               <a href="/#about">About</a>
               <a href="/#features">Features</a>
               <Link to="/blog">Blog</Link>
-              <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
+              <a href="https://calendar.app.google/TBoLz96A9MSa8fhx6" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
             </div>
           </div>
         </nav>
@@ -74,7 +74,7 @@ function BlogPostComponent() {
               <a href="/#about">About</a>
               <a href="/#features">Features</a>
               <Link to="/blog">Blog</Link>
-              <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
+              <a href="https://calendar.app.google/TBoLz96A9MSa8fhx6" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
             </div>
           </div>
         </nav>
@@ -146,7 +146,7 @@ function BlogPostComponent() {
             <a href="/#about">About</a>
             <a href="/#features">Features</a>
             <Link to="/blog">Blog</Link>
-            <a href="https://calendar.app.google/Ng5gE1kFfL7uxcRz7" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
+            <a href="https://calendar.app.google/TBoLz96A9MSa8fhx6" target="_blank" rel="noopener noreferrer" className="btn-primary">Book a Call</a>
           </div>
         </div>
       </nav>
